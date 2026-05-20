@@ -46,4 +46,85 @@ struct GameState {
     }
 };
 
+static int evaluate_line(const Sign sequence[5], Sign my_player) {
+
+    int mine = 0, theirs = 0, vacant = 0;
+    int start_mine = -1, end_mine = -1;
+    int start_vacant = -1, end_vacant = -1;
+    
+    for (int idx = 0; idx < 5; ++idx) {
+        Sign current = sequence[idx];
+        
+        if (current == Sign::WALL) {
+            return 0;
+        }
+        
+        if (current == my_player) {
+            ++mine;
+            if (start_mine < 0) start_mine = idx;
+            end_mine = idx;
+        } else if (current == Sign::NONE) {
+            ++vacant;
+            if (start_vacant < 0) start_vacant = idx;
+            end_vacant = idx;
+        } else {
+            ++theirs;
+        }
+    }
+    
+    if (mine > 0 && theirs > 0) {
+        return 0;
+    }
+    
+    bool left_free = (start_vacant == 0) || (start_mine == 0);
+    bool right_free = (end_vacant == 4) || (end_mine == 4);
+    int free_ends = (left_free ? 1 : 0) + (right_free ? 1 : 0);
+    
+    if (mine > 0 && theirs == 0) {
+        switch (mine) {
+            case 5:
+                return 10000000;
+            case 4:
+                return (vacant == 1) ? (150000 + free_ends * 10000) : 0;
+            case 3:
+                if (vacant == 2) {
+                    if (free_ends >= 2) return 25000;
+                    if (free_ends == 1) return 8000;
+                    return 1000;
+                }
+                return 0;
+            case 2:
+                return (vacant == 3) ? ((free_ends >= 2) ? 2000 : 400) : 0;
+            case 1:
+                return (vacant == 4 && free_ends >= 2) ? 100 : 10;
+            default:
+                return 0;
+        }
+    }
+    
+    if (theirs > 0 && mine == 0) {
+        switch (theirs) {
+            case 5:
+                return -10000000;
+            case 4:
+                return (vacant == 1) ? -900000 : 0;
+            case 3:
+                if (vacant == 2) {
+                    if (free_ends >= 2) return -150000;
+                    if (free_ends == 1) return -40000;
+                    return -5000;
+                }
+                return 0;
+            case 2:
+                return (vacant == 3) ? ((free_ends >= 2) ? -8000 : -1000) : 0;
+            case 1:
+                return (vacant == 4 && free_ends >= 2) ? -500 : -50;
+            default:
+                return 0;
+        }
+    }
+    
+    return 0;
+}
+
 }; // namespace ttt::my_player
