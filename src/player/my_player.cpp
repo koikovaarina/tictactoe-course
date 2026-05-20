@@ -3,36 +3,47 @@
 
 namespace ttt::my_player {
 
-void MyPlayer::set_sign(Sign sign) { m_sign = sign; }
-const char *MyPlayer::get_name() const { return m_name; }
+static const int CANDIDATE_RADIUS = 6; // радиус поиска перспективных клеток (только пустые клетки)
+static const int MAX_CANDIDATES = 80; // макс количество кандидатов для верхнего уровня (после сортировки по эвристике)
+static const int INNER_MAX_CANDIDATES = 30; // ограничивание кол-во кандидатов внутри дерева (для скорости)
+static const int INNER_RADIUS = 3; // радиус поиска для внутренних узлов дерева минимакс
 
-Point MyPlayer::make_move(const State &state) {
-  Point result;
-  for (int n_attempt = 0; n_attempt < 50; ++n_attempt) {
-    result.x = std::rand() % state.get_opts().cols;
-    result.y = std::rand() % state.get_opts().rows;
-    if (state.get_value(result.x, result.y) != Sign::NONE) {
-      --n_attempt;
-      continue;
-    }
-    bool has_neighbors = false;
-    for (int dx = -1; dx <= 1; ++dx) {
-      for (int dy = -1; dy <= 1; ++dy) {
-        if (dx == 0 && dy == 0)
-          continue;
-        const Sign val = state.get_value(result.x + dx, result.y + dy);
-        if (val == Sign::X || val == Sign::O) {
-          has_neighbors = true;
-          break;
-        }
-      }
-      if (has_neighbors)
-        break;
-    }
-    if (has_neighbors)
-      break;
-  }
-  return result;
+// направления
+static const struct { int dx; int dy; } directions[] = {
+    {1, 0}, {0, 1}, {1, 1}, {1, -1}
+};
+
+static bool within_boundaroes(int x, int y) {
+    return x >= 0 && x < 20 && y >= 0 && y < 20;
 }
+
+struct GameState {
+    Sign cells[20][20];
+    Sign current_player;
+    int turn_number;
+
+    void initialize(const State& source) {
+        for (int row_idx = 0; row_idx < 20; ++row_idx) {
+            for (int col_idx = 0; col_idx < 20; ++col_idx) {
+                cells[row_idx][col_idx] = source.get_value(col_idx, row_idx);
+            }
+        }
+        current_player = source.get_current_player();
+        turn_number = source.get_move_no();
+    }
+
+    Sign read(int x, int y) const {
+        if (x < 0 || x >= 20 || y < 0 || y >= 20) {
+            return Sign::WALL;
+        }
+        return cells[y][x];
+    }
+
+    void make_move(int x, int y) {
+        cells[y][x] = current_player;
+        current_player = (current_player == Sign::X) ? Sign::O : Sign::X;
+        ++turn_number;
+    }
+};
 
 }; // namespace ttt::my_player
