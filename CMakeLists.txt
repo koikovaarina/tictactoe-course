@@ -1,60 +1,49 @@
-cmake_minimum_required(VERSION 3.20.0)
+cmake_minimum_required(VERSION 3.14)
+project(TicTacToeCourse VERSION 1.0 LANGUAGES CXX)
 
-project(tictactoe-lab LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set (CMAKE_CXX_STANDARD 17)
-
-set (CMAKE_EXPORT_COMPILE_COMMANDS ON)
-if (CMAKE_EXPORT_COMPILE_COMMANDS)
-  set (CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES 
-      ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
+if(NOT DEFINED BUILD_TTTCORE)
+    set(BUILD_TTTCORE "SOURCE" CACHE STRING "Build tttcore from source or use prebuilt library")
+    set_property(CACHE BUILD_TTTCORE PROPERTY STRINGS "SOURCE" "PREBUILT")
 endif()
 
-# NOTE: set this variable to "PREBUILT" when you downloaded prebuilt tttcore
-# library with baseline player.
-#set(BUILD_TTTCORE "PREBUILT")
-
-if (BUILD_TTTCORE STREQUAL "PREBUILT")
-  find_library(TTTCORE_LIB libtttcore.a PATHS libs)
-
-  if (NOT TTTCORE_LIB)
-    message (FATAL_ERROR 
-        "Cannot find prebuilt tttcore library. Please, make sure that you have "
-        "placed it in `libs/` directory. If you have no prebuilt library, build "
-        "your code without baseline from available sources (without setting "
-        "BUILD_TTTCORE varaible)."
-      )
-  endif()
-else()
-  set(core_src src/core/event.cpp src/core/game.cpp src/core/state.cpp src/core/field.cpp)
-  if (BUILD_TTTCORE STREQUAL "FULL")
-    include(FetchContent)
-
-    FetchContent_Declare(baseline_src_repo
-      GIT_REPOSITORY git@github.com:vsennov/tictactoe-baseline.git 
-      GIT_TAG 5aa65670b9dfc893440a1eaa3b0c67ae7030319c
+if(BUILD_TTTCORE STREQUAL "PREBUILT")
+    add_library(tttcore STATIC IMPORTED)
+    set_target_properties(tttcore PROPERTIES
+        IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/libs/libtttcore.a"
     )
-
-    FetchContent_MakeAvailable(baseline_src_repo)
-
-    set(core_src ${core_src} ${baseline_src_repo_SOURCE_DIR}/baseline.cpp)
-  endif()
-  add_library(tttcore STATIC ${core_src})
-  set(TTTCORE_LIB tttcore)
+    target_include_directories(tttcore INTERFACE ${CMAKE_SOURCE_DIR}/src)
+    message(STATUS "Using PREBUILT libtttcore.a from libs/")
+else()
+    set(TTT_CORE_SOURCES
+        src/core/state.cpp
+        src/core/game.cpp
+        src/core/field.cpp
+        src/core/event.cpp
+    )
+    add_library(tttcore STATIC ${TTT_CORE_SOURCES})
+    target_include_directories(tttcore PUBLIC ${CMAKE_SOURCE_DIR}/src)
+    message(STATUS "Building tttcore from SOURCE")
 endif()
 
-include_directories(src)
+set(TTT_PLAYER_SOURCES
+    src/player/my_observer.cpp
+    src/player/my_player.cpp
+)
+add_library(tttplayer STATIC ${TTT_PLAYER_SOURCES})
+target_include_directories(tttplayer PUBLIC ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(tttplayer PUBLIC tttcore)
 
-# NOTE: add source files for your players here
-set(player_src src/player/my_player.cpp src/player/my_observer.cpp)
-add_library(tttplayer STATIC ${player_src})
-target_link_libraries(tttplayer ${TTTCORE_LIB})
+add_executable(test_stats_vs_baseline tests/test_stats_vs_baseline.cpp)
+target_include_directories(test_stats_vs_baseline PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(test_stats_vs_baseline PRIVATE tttplayer tttcore)
 
-# NOTE: enable or disable ctest
-enable_testing()
-add_subdirectory("tests")
+add_executable(test_my_player_vs_human tests/test_my_player_vs_human.cpp)
+target_include_directories(test_my_player_vs_human PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(test_my_player_vs_human PRIVATE tttplayer tttcore)
 
-# NOTE: this submodule builds sources for remote game
-if (BUILD_TTTREMOTE)
-  add_subdirectory("src/remote")
-endif()
+message(STATUS "CMake configured successfully!")
+message(STATUS "BUILD_TTTCORE: ${BUILD_TTTCORE}")
+message(STATUS "Targets: tttcore, tttplayer, test_stats_vs_baseline, test_my_player_vs_human")
