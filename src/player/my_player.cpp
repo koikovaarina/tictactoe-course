@@ -309,4 +309,31 @@ static int minimax(const GameState& state, int depth, bool is_max, Sign my_sign,
     }
 }
 
+static bool check_victory(const GameState& state, Sign player) {
+    for (int row = 0; row < 20; ++row) {
+        for (int col = 0; col < 20; ++col) {
+            if (state.cells[row][col] != player) continue;
+
+            for (int d = 0; d < 4; ++d) {
+                int streak = 1;
+
+                for (int k = 1; k < 5; ++k) {
+                    int check_x = col + directions[d].dx * k;
+                    int check_y = row + directions[d].dy * k;
+
+                    if (!within_boundaroes(check_x, check_y) || state.cells[check_y][check_x] != player) {
+                        break;
+                    }
+                    ++streak;
+                }
+
+                if (streak >= 5) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
 }; // namespace ttt::my_player
