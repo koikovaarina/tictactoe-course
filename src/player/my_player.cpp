@@ -165,4 +165,105 @@ static int quick_score(const GameState& ls, int x, int y, Sign my_sign) {
     return total;
 }
 
+// сортировка кандидатов (сортировка вставками)
+static void sort_candidates_light(Point* candidates, int count, const GameState& ls, Sign my_sign) {
+    for (int i = 1; i < count; ++i) {
+        Point current = candidates[i];
+        int current_val = quick_score(ls, current.x, current.y, my_sign);
+        
+        int j = i - 1;
+
+        while (j >= 0) {
+            int val = quick_score(ls, candidates[j].x, candidates[j].y, my_sign);
+            if (val < current_val) {
+                candidates[j + 1] = candidates[j];
+                --j;
+            } else {
+                break;
+            }
+        }
+        candidates[j + 1] = current;
+    }
+}
+
+static void get_candidates_light(const GameState& ls, Point* candidates, int& count, Sign my_sign) {
+    static bool near[20][20];
+    for (int y = 0; y < 20; ++y)
+        for (int x = 0; x < 20; ++x)
+            near[y][x] = false;
+
+    for (int y = 0; y < 20; ++y) {
+        for (int x = 0; x < 20; ++x) {
+            Sign val = ls.cells[y][x];
+            if (val == Sign::X || val == Sign::O) {
+                for (int dy = -CANDIDATE_RADIUS; dy <= CANDIDATE_RADIUS; ++dy) {
+                    for (int dx = -CANDIDATE_RADIUS; dx <= CANDIDATE_RADIUS; ++dx) {
+                        int nx = x + dx, ny = y + dy;
+                        if (within_boundaroes(nx, ny) && ls.cells[ny][nx] == Sign::NONE) {
+                            near[ny][nx] = true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    count = 0;
+    for (int y = 0; y < 20; ++y) {
+        for (int x = 0; x < 20; ++x) {
+            if (near[y][x]) {
+                candidates[count].x = x;
+                candidates[count].y = y;
+                ++count;
+            }
+        }
+    }
+    
+    sort_candidates_light(candidates, count, ls, my_sign);
+    
+    if (count > MAX_CANDIDATES) count = MAX_CANDIDATES;
+    
+    if (count == 0) {
+        candidates[0] = {10, 10};
+        count = 1;
+    }
+}
+
+static void get_inner_candidates(const GameState& ls, Point* candidates, int& count) {
+    bool is_near[20][20] = {};
+
+    for (int y = 0; y < 20; ++y) {
+        for (int x = 0; x < 20; ++x) {
+            // Пропускаем пустые клетки и стены
+            if (ls.cells[y][x] == Sign::NONE || ls.cells[y][x] == Sign::WALL) {
+                continue;
+            }
+            
+            int y_min = (y > INNER_RADIUS) ? y - INNER_RADIUS : 0;
+            int y_max = (y + INNER_RADIUS < 20) ? y + INNER_RADIUS : 19;
+            int x_min = (x > INNER_RADIUS) ? x - INNER_RADIUS : 0;
+            int x_max = (x + INNER_RADIUS < 20) ? x + INNER_RADIUS : 19;
+            
+            for (int ny = y_min; ny <= y_max; ++ny) {
+                for (int nx = x_min; nx <= x_max; ++nx) {
+                    if (ls.cells[ny][nx] == Sign::NONE) {
+                        is_near[ny][nx] = true;
+                    }
+                }
+            }
+        }
+    }
+
+    count = 0;
+    for (int y = 0; y < 20 && count < INNER_MAX_CANDIDATES; ++y) {
+        for (int x = 0; x < 20 && count < INNER_MAX_CANDIDATES; ++x) {
+            if (is_near[y][x]) {
+                candidates[count].x = x;
+                candidates[count].y = y;
+                ++count;
+            }
+        }
+    }
+}
+
 }; // namespace ttt::my_player
