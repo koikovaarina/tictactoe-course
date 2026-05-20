@@ -127,4 +127,42 @@ static int evaluate_line(const Sign sequence[5], Sign my_player) {
     return 0;
 }
 
+static int score_all_light(const GameState& ls, Sign my_sign) {
+    int total = 0;
+    for (int y = 0; y < 20; ++y) {
+        for (int x = 0; x < 20; ++x) {
+            for (int dir = 0; dir < 4; ++dir) {
+                Sign window[5];
+                bool valid = true;
+                for (int i = 0; i < 5; ++i) {
+                    int nx = x + directions[dir].dx * i;
+                    int ny = y + directions[dir].dy * i;
+                    if (!within_boundaroes(nx, ny)) { valid = false; break; }
+                    window[i] = ls.cells[ny][nx];
+                }
+                if (valid) total += evaluate_line(window, my_sign);
+            }
+        }
+    }
+    return total;
+}
+
+static int quick_score(const GameState& ls, int x, int y, Sign my_sign) {
+    int total = 0;
+    for (int dir = 0; dir < 4; ++dir) {
+        for (int start = -4; start <= 0; ++start) {
+            Sign window[5];
+            bool valid = true;
+            for (int i = 0; i < 5; ++i) {
+                int nx = x + directions[dir].dx * (start + i);
+                int ny = y + directions[dir].dy * (start + i);
+                if (!within_boundaroes(nx, ny)) { valid = false; break; }
+                window[i] = (nx == x && ny == y) ? my_sign : ls.cells[ny][nx];
+            }
+            if (valid) total += evaluate_line(window, my_sign);
+        }
+    }
+    return total;
+}
+
 }; // namespace ttt::my_player
