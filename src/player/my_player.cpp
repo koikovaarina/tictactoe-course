@@ -1,5 +1,6 @@
 #include "my_player.hpp"
 #include <cstdlib>
+#include <ctime>
 
 namespace ttt::my_player {
 
@@ -263,6 +264,48 @@ static void get_inner_candidates(const GameState& ls, Point* candidates, int& co
                 ++count;
             }
         }
+    }
+}
+
+// минимакс с альфа-бета отсечением и ограничением по времени
+static int minimax(const GameState& state, int depth, bool is_max, Sign my_sign, 
+                  int alpha, int beta, clock_t deadline) {
+    if (clock() > deadline || depth == 0) {
+        return score_all_light(state, my_sign);
+    }
+
+    Point moves[40];
+    int count = 0;
+    get_inner_candidates(state, moves, count);
+    
+    if (count == 0) return score_all_light(state, my_sign);
+
+    if (is_max) {
+        int best_score = -1000000000;
+        for (int i = 0; i < count; ++i) {
+            GameState next = state;
+            next.make_move(moves[i].x, moves[i].y);
+            
+            int val = minimax(next, depth - 1, false, my_sign, alpha, beta, deadline);
+            
+            if (val > best_score) best_score = val;
+            if (val > alpha) alpha = val;
+            if (beta <= alpha) break;
+        }
+        return best_score;
+    } else {
+        int best_score = 1000000000;
+        for (int i = 0; i < count; ++i) {
+            GameState next = state;
+            next.make_move(moves[i].x, moves[i].y);
+            
+            int val = minimax(next, depth - 1, true, my_sign, alpha, beta, deadline);
+            
+            if (val < best_score) best_score = val;
+            if (val < beta) beta = val;
+            if (beta <= alpha) break;
+        }
+        return best_score;
     }
 }
 
