@@ -1,6 +1,8 @@
 #include "my_player.hpp"
 #include <cstdlib>
 #include <ctime>
+#include <climits>
+#include <cmath>
 
 namespace ttt::my_player {
 
