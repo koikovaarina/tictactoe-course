@@ -379,4 +379,73 @@ static Point safe_first_move(const State& game_state) {
     return {10, 10};
 }
 
+
+
+void MyPlayer::set_sign(Sign sign) { m_sign = sign; }
+const char* MyPlayer::get_name() const { return m_name; }
+
+Point MyPlayer::make_move(const State& state) {
+    if (state.get_move_no() == 0) {
+        Point p = safe_first_move(state);
+        if (within_boundaroes(p.x, p.y) && state.get_value(p.x, p.y) == Sign::NONE)
+            return p;
+        return {10, 10};
+    }
+
+    GameState root;
+    root.initialize(state);
+
+    Point candidates[400];
+    int cand_count = 0;
+    get_candidates_light(root, candidates, cand_count, m_sign);
+    if (cand_count == 0) return {10, 10};
+
+    for (int i = 0; i < cand_count; ++i) {
+        GameState test = root;
+        test.make_move(candidates[i].x, candidates[i].y);
+        if (check_victory(test, m_sign)) return candidates[i];
+    }
+
+    Sign opp_sign = (m_sign == Sign::X) ? Sign::O : Sign::X;
+    for (int i = 0; i < cand_count; ++i) {
+        GameState test = root;
+        test.cells[candidates[i].y][candidates[i].x] = opp_sign;
+        if (check_victory(test, opp_sign)) return candidates[i];
+    }
+
+    clock_t start_time = clock();
+    clock_t deadline = start_time + (CLOCKS_PER_SEC * 80 / 1000); // 80мс на ход
+    Point best_move = candidates[0];
+    int best_score = -1000000000;
+
+    for (int depth = 2; depth <= 6; ++depth) {
+        int current_best_score = -1000000000;
+        Point current_best = candidates[0];
+        bool time_out = false;
+
+        for (int i = 0; i < cand_count; ++i) {
+            GameState child = root;
+            child.make_move(candidates[i].x, candidates[i].y);
+            
+            int score = minimax(child, depth - 1, false, m_sign, 
+                                -1000000000, 1000000000, deadline);
+            
+            if (clock() > deadline) {
+                time_out = true;
+                break;
+            }
+
+            if (score > current_best_score) {
+                current_best_score = score;
+                current_best = candidates[i];
+            }
+        }
+        if (time_out) break;
+        best_score = current_best_score;
+        best_move = current_best;
+    }
+
+    return best_move;
+}
+
 }; // namespace ttt::my_player
