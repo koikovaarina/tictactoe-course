@@ -336,4 +336,47 @@ static bool check_victory(const GameState& state, Sign player) {
     return false;
 }
 
+static Point safe_first_move(const State& game_state) {
+    int selected_x = -1;
+    int selected_y = -1;
+    int min_wall_count = 100000;
+
+    for (int row = 0; row < 20; ++row) {
+        for (int col = 0; col < 20; ++col) {
+            // Пропускаем занятые клетки
+            if (game_state.get_value(col, row) != Sign::NONE) {
+                continue;
+            }
+
+            int wall_count = 0;
+            for (int offset_y = -2; offset_y <= 2; ++offset_y) {
+                for (int offset_x = -2; offset_x <= 2; ++offset_x) {
+                    int check_x = col + offset_x;
+                    int check_y = row + offset_y;
+
+                    if (within_boundaroes(check_x, check_y) && 
+                        game_state.get_value(check_x, check_y) == Sign::WALL) {
+                        ++wall_count;
+                    }
+                }
+            }
+
+            int center_distance = std::abs(col - 10) + std::abs(row - 10);
+            int current_best_dist = std::abs(selected_x - 10) + std::abs(selected_y - 10);
+
+            if (wall_count < min_wall_count || 
+                (wall_count == min_wall_count && center_distance < current_best_dist)) {
+                min_wall_count = wall_count;
+                selected_x = col;
+                selected_y = row;
+            }
+        }
+    }
+
+    if (selected_x != -1) {
+        return {selected_x, selected_y};
+    }
+    return {10, 10};
+}
+
 }; // namespace ttt::my_player
